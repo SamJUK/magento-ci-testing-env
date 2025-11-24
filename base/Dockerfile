@@ -10,19 +10,28 @@ RUN apk add --no-cache --update \
 	libxslt-dev \
 	libzip-dev
 
-RUN apk add --no-cache --update --virtual build-deps \
-	g++ \
-	shadow \
-	curl-dev \
-	oniguruma-dev \
-	libpng-dev \
-	libxml2-dev \
-	zlib-dev \
-    autoconf \
-    linux-headers \
+
+
+ARG PHP_EXTENSIONS="bcmath gd intl opcache pcntl pdo_mysql soap sockets xsl zip ftp"
+RUN PHP_VER="$(echo ${PHP_VERSION} | tr -d '.')" \
+    && PHP_EXTS= && for ext in $PHP_EXTENSIONS; do \
+        # OPCache is bundled and enabled by default as of PHP 8.5+
+        [[ "$ext" == "opcache" && "$PHP_VER" -ge "850" ]] && continue; \
+        PHP_EXTS="${PHP_EXTS} ${ext}"; \
+    done \
+    && apk add --no-cache --update --virtual build-deps \
+        g++ \
+        shadow \
+        curl-dev \
+        oniguruma-dev \
+        libpng-dev \
+        libxml2-dev \
+        zlib-dev \
+        autoconf \
+        linux-headers \
     # Setup PHP Extensions
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install -j$(nproc) bcmath gd intl opcache pcntl pdo_mysql soap sockets xsl zip ftp \
+    && docker-php-ext-install -j$(nproc) ${PHP_EXTS} \
     # Cleanup - Remove build dependencies and temp files
 	&& docker-php-source delete \
     && apk  del build-deps \

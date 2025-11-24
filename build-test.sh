@@ -58,6 +58,7 @@ build_magento() {
 }
 
 echo "[+] Building Base Docker images..."
+build_base "8.5"
 build_base "8.4"
 build_base "8.3"
 build_base "8.2"
