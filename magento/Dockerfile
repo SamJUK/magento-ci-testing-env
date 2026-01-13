@@ -22,7 +22,7 @@ RUN --mount=type=cache,target=/tmp/cache \
 
 # Configure Local Extensions Directory
 RUN mkdir -p extensions && \
-    composer config repositories.local path ./extensions
+    composer config repositories.local path ./extensions/*
 
 # Allow Composer Plugins
 RUN composer config --no-plugins allow-plugins.phpstan/extension-installer true && \
