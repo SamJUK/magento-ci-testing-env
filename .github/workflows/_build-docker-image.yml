@@ -125,10 +125,10 @@ jobs:
           build-args: ${{ inputs.build-args }}
           cache-from: |
             type=gha,scope=${{ inputs.cache-scope }}
-            type=registry,ref=ghcr.io/samjuk/${{ inputs.image-name }}:cache-${{ inputs.tag-suffix }}
+            type=registry,ref=ghcr.io/samjuk/${{ inputs.image-name }}:buildcache
           cache-to: |
             type=gha,mode=max,scope=${{ inputs.cache-scope }}
-            type=registry,ref=ghcr.io/samjuk/${{ inputs.image-name }}:cache-${{ inputs.tag-suffix }},mode=max
+            type=registry,ref=ghcr.io/samjuk/${{ inputs.image-name }}:buildcache,mode=max
           provenance: mode=max
           sbom: true
 

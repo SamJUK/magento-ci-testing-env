@@ -36,7 +36,7 @@ RUN --mount=type=cache,target=/root/.composer/cache \
     && mkdir -p extensions \
     && composer config repositories.local path ./extensions/*
 
-# Fix Application
+# Apply patches and final setup
 COPY patches.json ./
 COPY ./scripts/ ./scripts/
 RUN --mount=type=cache,target=/root/.composer/cache \
@@ -58,7 +58,8 @@ RUN php bin/magento module:enable --all \
     && php ./scripts/merge-default-scope-config.php \
     && php bin/magento setup:di:compile \
     && php bin/magento setup:static-content:deploy -f -s compact --symlink-locale --jobs=$(nproc) \
-    && rm -rf var/view_preprocessed/* var/cache/* var/page_cache/* var/generation/*
+    && rm -rf var/view_preprocessed/* var/cache/* var/page_cache/* var/generation/* \
+    && rm -rf ./scripts/
 
 # Add our env.php
 COPY env.php app/etc/env.php
