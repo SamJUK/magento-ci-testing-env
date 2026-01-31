@@ -162,7 +162,7 @@ jobs:
           output: sbom-${{ inputs.tag-suffix }}.${{ steps.params.outputs.sbom-ext }}
 
       - name: Upload SBOM artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: sbom-${{ inputs.tag-suffix }}
           path: sbom-${{ inputs.tag-suffix }}.${{ steps.params.outputs.sbom-ext }}
