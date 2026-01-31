@@ -1,6 +1,6 @@
 <?php declare( strict_types = 1 );
 
-$configFile = __DIR__ . '/app/etc/config.php';
+$configFile = __DIR__ . '/../app/etc/config.php';
 if ( !file_exists( $configFile ) ) {
     echo "Config file not found: $configFile\n";
     exit( 1 );

@@ -1,0 +1,175 @@
+name: Reusable Docker Build Workflow
+
+on:
+  workflow_call:
+    inputs:
+      image-name:
+        description: 'Base name of the Docker image (e.g., magento-base-ci-testing-env)'
+        required: true
+        type: string
+      build-type:
+        description: 'Build type: base or magento'
+        required: true
+        type: string
+      tag-suffix:
+        description: 'Tag suffix (e.g., "8.2" or "2.4.7-php8.2")'
+        required: true
+        type: string
+      build-args:
+        description: 'Build arguments (multiline string)'
+        required: false
+        type: string
+        default: ''
+      cache-scope:
+        description: 'Cache scope identifier'
+        required: true
+        type: string
+      platforms:
+        description: 'Target platforms'
+        required: false
+        type: string
+        default: 'linux/amd64'
+    secrets:
+      dockerhub-username:
+        description: 'Docker Hub username'
+        required: true
+      dockerhub-token:
+        description: 'Docker Hub token'
+        required: true
+      github-token:
+        description: 'GitHub token'
+        required: true
+
+env:
+  DOCKER_BUILDKIT: 1
+  BUILDKIT_PROGRESS: plain
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Compute build parameters
+        id: params
+        run: |
+          # Extract git tag from ref
+          GIT_TAG="${GITHUB_REF#refs/tags/}"
+          echo "git-tag=$GIT_TAG" >> $GITHUB_OUTPUT
+          
+          # Set context and dockerfile based on build type
+          if [ "${{ inputs.build-type }}" = "base" ]; then
+            echo "context=./base" >> $GITHUB_OUTPUT
+            echo "dockerfile=./base/Dockerfile" >> $GITHUB_OUTPUT
+            echo "sbom-format=spdx-json" >> $GITHUB_OUTPUT
+            echo "sbom-ext=spdx.json" >> $GITHUB_OUTPUT
+          else
+            echo "context=./magento" >> $GITHUB_OUTPUT
+            echo "dockerfile=./magento/Dockerfile" >> $GITHUB_OUTPUT
+            echo "sbom-format=cyclonedx" >> $GITHUB_OUTPUT
+            echo "sbom-ext=cdx.json" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          driver-opts: |
+            image=moby/buildkit:latest
+            network=host
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.dockerhub-username }}
+          password: ${{ secrets.dockerhub-token }}
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.github-token }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            samjuk/${{ inputs.image-name }}
+            ghcr.io/samjuk/${{ inputs.image-name }}
+          tags: |
+            type=raw,value=${{ inputs.tag-suffix }}
+            type=raw,value=${{ inputs.tag-suffix }}-${{ steps.params.outputs.git-tag }}
+          flavor: |
+            latest=false
+
+      - name: Build and push image
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ steps.params.outputs.context }}
+          file: ${{ steps.params.outputs.dockerfile }}
+          platforms: ${{ inputs.platforms }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: ${{ inputs.build-args }}
+          cache-from: type=gha,scope=${{ inputs.cache-scope }}
+          cache-to: type=gha,mode=max,scope=${{ inputs.cache-scope }}
+          provenance: mode=max
+          sbom: true
+
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Sign image with Cosign
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          cosign sign --yes \
+            samjuk/${{ inputs.image-name }}@${DIGEST}
+          cosign sign --yes \
+            ghcr.io/samjuk/${{ inputs.image-name }}@${DIGEST}
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: samjuk/${{ inputs.image-name }}:${{ inputs.tag-suffix }}
+          format: 'sarif'
+          output: trivy-${{ inputs.tag-suffix }}.sarif
+          severity: 'CRITICAL,HIGH'
+
+      - name: Upload Trivy results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: trivy-${{ inputs.tag-suffix }}.sarif
+          category: ${{ inputs.tag-suffix }}
+
+      - name: Generate SBOM
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: samjuk/${{ inputs.image-name }}:${{ inputs.tag-suffix }}
+          format: ${{ steps.params.outputs.sbom-format }}
+          output: sbom-${{ inputs.tag-suffix }}.${{ steps.params.outputs.sbom-ext }}
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ inputs.tag-suffix }}
+          path: sbom-${{ inputs.tag-suffix }}.${{ steps.params.outputs.sbom-ext }}
+          retention-days: 90
+
+      - name: Image digest
+        run: |
+          echo "Image built and pushed successfully!"
+          echo "Digest: ${{ steps.build.outputs.digest }}"
+          echo "Tags: ${{ steps.meta.outputs.tags }}"

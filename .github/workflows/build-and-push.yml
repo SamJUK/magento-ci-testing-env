@@ -1,0 +1,182 @@
+name: Build and Push Docker Images
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  DOCKER_BUILDKIT: 1
+  BUILDKIT_PROGRESS: plain
+
+jobs:
+  secret-scan:
+    name: Secret Scanning with TruffleHog
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for TruffleHog to scan
+
+      - name: Run TruffleHog secret scan
+        uses: trufflesecurity/trufflehog@v3.92.5
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --only-verified
+
+      - name: TruffleHog scan (all secrets, non-blocking)
+        if: always()
+        uses: trufflesecurity/trufflehog@v3.92.5
+        continue-on-error: true
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --json
+        id: trufflehog-scan
+
+  prepare-matrix:
+    name: Prepare Build Matrix
+    runs-on: ubuntu-latest
+    needs: secret-scan
+    outputs:
+      matrix-base: ${{ steps.set-matrix.outputs.matrix-base }}
+      matrix-magento: ${{ steps.set-matrix.outputs.matrix-magento }}
+      matrix-mageos: ${{ steps.set-matrix.outputs.matrix-mageos }}
+      git-tag: ${{ steps.set-tag.outputs.git-tag }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set version tag
+        id: set-tag
+        run: |
+            echo "git-tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Generate build matrices
+        id: set-matrix
+        run: |
+          # Base images matrix (PHP versions)
+          BASE_MATRIX=$(jq -c '{php: [keys_unsorted[]]}' manifest.json)
+          echo "matrix-base=$BASE_MATRIX" >> $GITHUB_OUTPUT
+          
+          # Magento images matrix
+          MAGENTO_MATRIX=$(jq -c '[keys_unsorted[] as $php | .[$php].magento[] | {php: $php, version: .}] | {include: .}' manifest.json)
+          echo "matrix-magento=$MAGENTO_MATRIX" >> $GITHUB_OUTPUT
+          
+          # Mage-OS images matrix
+          MAGEOS_MATRIX=$(jq -c '[keys_unsorted[] as $php | (.[$php]."mage-os" // [])[] | {php: $php, version: .}] | {include: .}' manifest.json)
+          echo "matrix-mageos=$MAGEOS_MATRIX" >> $GITHUB_OUTPUT
+
+      - name: Display matrices
+        run: |
+          echo "Git Tag: ${{ steps.set-tag.outputs.git-tag }}"
+          echo "Base Matrix: ${{ steps.set-matrix.outputs.matrix-base }}"
+          echo "Magento Matrix: ${{ steps.set-matrix.outputs.matrix-magento }}"
+          echo "Mage-OS Matrix: ${{ steps.set-matrix.outputs.matrix-mageos }}"
+
+  build-base-images:
+    name: Build Base Image (PHP ${{ matrix.php }})
+    needs: prepare-matrix
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix: ${{ fromJson(needs.prepare-matrix.outputs.matrix-base) }}
+    uses: ./.github/workflows/_build-docker-image.yml
+    with:
+      image-name: magento-base-ci-testing-env
+      build-type: base
+      tag-suffix: ${{ matrix.php }}
+      build-args: |
+        PHP_VERSION=${{ matrix.php }}
+      cache-scope: base-${{ matrix.php }}
+    secrets:
+      dockerhub-username: ${{ secrets.DOCKERHUB_USERNAME }}
+      dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  build-magento-images:
+    name: Build Magento Image (${{ matrix.version }}-php${{ matrix.php }})
+    needs: [prepare-matrix, build-base-images]
+    if: needs.prepare-matrix.outputs.matrix-magento != '{"include":[]}'
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix: ${{ fromJson(needs.prepare-matrix.outputs.matrix-magento) }}
+    uses: ./.github/workflows/_build-docker-image.yml
+    with:
+      image-name: magento-ci-testing-env
+      build-type: magento
+      tag-suffix: ${{ matrix.version }}-php${{ matrix.php }}
+      build-args: |
+        PHP_VERSION=${{ matrix.php }}
+        APP_DISTRO=magento
+        APP_VERSION=${{ matrix.version }}
+      cache-scope: magento-${{ matrix.php }}
+    secrets:
+      dockerhub-username: ${{ secrets.DOCKERHUB_USERNAME }}
+      dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  build-mageos-images:
+    name: Build Mage-OS Image (${{ matrix.version }}-php${{ matrix.php }})
+    needs: [prepare-matrix, build-base-images]
+    if: needs.prepare-matrix.outputs.matrix-mageos != '{"include":[]}'
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix: ${{ fromJson(needs.prepare-matrix.outputs.matrix-mageos) }}
+    uses: ./.github/workflows/_build-docker-image.yml
+    with:
+      image-name: mage-os-ci-testing-env
+      build-type: magento
+      tag-suffix: ${{ matrix.version }}-php${{ matrix.php }}
+      build-args: |
+        PHP_VERSION=${{ matrix.php }}
+        APP_DISTRO=mage-os
+        APP_VERSION=${{ matrix.version }}
+      cache-scope: mageos-${{ matrix.php }}
+    secrets:
+      dockerhub-username: ${{ secrets.DOCKERHUB_USERNAME }}
+      dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  summary:
+    name: Build Summary
+    runs-on: ubuntu-latest
+    needs: [secret-scan, prepare-matrix, build-base-images, build-magento-images, build-mageos-images]
+    if: always()
+    steps:
+      - name: Check build status
+        run: |
+          echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Release Tag:** ${{ needs.prepare-matrix.outputs.git-tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Security Scans" >> $GITHUB_STEP_SUMMARY
+          echo "- Secret Scanning: ${{ needs.secret-scan.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Build Results" >> $GITHUB_STEP_SUMMARY
+          echo "- Base Images: ${{ needs.build-base-images.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Magento Images: ${{ needs.build-magento-images.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Mage-OS Images: ${{ needs.build-mageos-images.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Registries" >> $GITHUB_STEP_SUMMARY
+          echo "- Docker Hub: https://hub.docker.com/u/samjuk" >> $GITHUB_STEP_SUMMARY
+          echo "- GHCR: https://github.com/orgs/SamJUK/packages?repo_name=magento-ci-testing-env" >> $GITHUB_STEP_SUMMARY
+
+      - name: Fail if any build failed
+        if: |
+          needs.secret-scan.result == 'failure' ||
+          needs.build-base-images.result == 'failure' ||
+          needs.build-magento-images.result == 'failure' ||
+          needs.build-mageos-images.result == 'failure'
+        run: |
+          echo "One or more builds failed!"
+          exit 1
