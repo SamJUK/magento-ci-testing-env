@@ -95,7 +95,7 @@ jobs:
       security-events: write
     strategy:
       fail-fast: false
-      max-parallel: 2
+      max-parallel: 10
       matrix: ${{ fromJson(needs.prepare-matrix.outputs.matrix-base) }}
     uses: ./.github/workflows/_build-docker-image.yml
     with:
@@ -122,7 +122,7 @@ jobs:
       security-events: write
     strategy:
       fail-fast: false
-      max-parallel: 4
+      max-parallel: 10
       matrix: ${{ fromJson(needs.prepare-matrix.outputs.matrix-magento) }}
     uses: ./.github/workflows/_build-docker-image.yml
     with:
@@ -151,7 +151,7 @@ jobs:
       security-events: write
     strategy:
       fail-fast: false
-      max-parallel: 4
+      max-parallel: 10
       matrix: ${{ fromJson(needs.prepare-matrix.outputs.matrix-mageos) }}
     uses: ./.github/workflows/_build-docker-image.yml
     with:
