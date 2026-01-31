@@ -123,8 +123,12 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: ${{ inputs.build-args }}
-          cache-from: type=gha,scope=${{ inputs.cache-scope }}
-          cache-to: type=gha,mode=max,scope=${{ inputs.cache-scope }}
+          cache-from: |
+            type=gha,scope=${{ inputs.cache-scope }}
+            type=registry,ref=ghcr.io/samjuk/${{ inputs.image-name }}:cache-${{ inputs.tag-suffix }}
+          cache-to: |
+            type=gha,mode=max,scope=${{ inputs.cache-scope }}
+            type=registry,ref=ghcr.io/samjuk/${{ inputs.image-name }}:cache-${{ inputs.tag-suffix }},mode=max
           provenance: mode=max
           sbom: true
 

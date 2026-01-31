@@ -3,15 +3,20 @@ FROM php:${PHP_VERSION}-fpm-alpine
 
 WORKDIR /var/www/html
 
-RUN apk add --no-cache --update \
+# Install system dependencies and additional tools (rarely changes)
+RUN --mount=type=cache,target=/var/cache/apk \
+    apk add --no-cache --update \
     freetype-dev \
 	libjpeg-turbo-dev \
 	icu-dev \
 	libxslt-dev \
-	libzip-dev
+	libzip-dev \
+    jq yq git patch
 
+# Install PHP extensions (changes with PHP version)
 ARG PHP_EXTENSIONS="bcmath gd intl opcache pcntl pdo_mysql soap sockets xsl zip ftp"
-RUN PHP_VER="$(echo ${PHP_VERSION} | tr -d '.')" \
+RUN --mount=type=cache,target=/var/cache/apk \
+    PHP_VER="$(echo ${PHP_VERSION} | tr -d '.')" \
     && PHP_EXTS= && for ext in $PHP_EXTENSIONS; do \
         # OPCache is bundled and enabled by default as of PHP 8.5+
         [[ "$ext" == "opcache" && "$PHP_VER" -ge "850" ]] && continue; \
@@ -40,7 +45,8 @@ COPY custom.ini /usr/local/etc/php/conf.d/
 #
 # Helper Tools
 #
-RUN if [[ "$PHP_VERSION" = 7.4* ]]; then \
+RUN --mount=type=cache,target=/tmp/composer-download \
+    if [[ "$PHP_VERSION" = 7.4* ]]; then \
         curl -sOL https://getcomposer.org/download/2.2.26/composer.phar; \
     else \
         curl -sOL https://getcomposer.org/download/2.9.5/composer.phar; \
@@ -66,9 +72,3 @@ RUN set -e; \
     ln -s /usr/local/bin/n98-magerun2.phar /usr/local/bin/n98-magerun2 && \
     ln -s /usr/local/bin/n98-magerun2.phar /usr/local/bin/magerun2 && \
     n98-magerun2 --version
-
-
-#
-# Additional Tools
-#
-RUN apk add --no-cache jq yq git patch

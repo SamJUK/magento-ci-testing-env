@@ -11,7 +11,8 @@ ENV MAGE_MODE=production
 RUN composer config --global audit.block-insecure false || true
 
 # Download Application
-RUN --mount=type=cache,target=/tmp/cache \
+RUN --mount=type=cache,target=/root/.composer/cache \
+    --mount=type=cache,target=/tmp/cache \
     set -e; \
     if [ "${APP_DISTRO}" != "magento" ] && [ "${APP_DISTRO}" != "mage-os" ]; then \
         echo "Error: APP_DISTRO must be either 'magento' or 'mage-os'. \"${APP_DISTRO}\" provided."; \
@@ -27,10 +28,10 @@ RUN --mount=type=cache,target=/tmp/cache \
     && composer config --no-plugins allow-plugins.laminas/laminas-dependency-plugin true \
     # Install Extra Composer Tooling
     && composer require --no-update --dev \
-        vaimo/composer-patches \
-        phpstan/phpstan \
-        bitexpert/phpstan-magento \
-        phpstan/extension-installer \
+        vaimo/composer-patches:* \
+        phpstan/phpstan:* \
+        bitexpert/phpstan-magento:* \
+        phpstan/extension-installer:* \
     # Configure local Extensions directory
     && mkdir -p extensions \
     && composer config repositories.local path ./extensions/*
@@ -38,7 +39,8 @@ RUN --mount=type=cache,target=/tmp/cache \
 # Fix Application
 COPY patches.json ./
 COPY ./scripts/ ./scripts/
-RUN set -e; \
+RUN --mount=type=cache,target=/root/.composer/cache \
+    set -e; \
     # Apply Patches
     jq '.extra.patches = ((.extra.patches // {}) * input)' composer.json patches.json > composer.tmp \
     && mv composer.tmp composer.json \
