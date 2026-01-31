@@ -1,0 +1,22 @@
+{        
+    "*": {
+        "ACSD-46815 (2.4.5): static content deploy fails when using compact strategy": {
+            "source": "patches/ACSD-46815_2.4.5_v2.patch",
+            "depends": {
+                "magento/module-deploy": ">=100.4.5 <=100.4.5-p11"
+            }
+        },
+        "ACSD-46815 (2.4.4): static content deploy fails when using compact strategy": {
+            "source": "patches/ACSD-46815_2.4.4_v2.patch",
+            "depends": {
+                "magento/module-deploy": ">=100.4.4 <=100.4.4-p12"
+            }
+        },
+        "ACSD-59280 (2.4.4): ReflectionUnionType::getName() error in 2.4.4-pX installations": {
+            "source": "patches/AC-2855.patch",
+            "depends": {
+                "magento/framework": ">=103.0.4 <=103.0.4-p13"
+            }
+        }
+    }
+}

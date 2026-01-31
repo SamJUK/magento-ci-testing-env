@@ -10,8 +10,6 @@ RUN apk add --no-cache --update \
 	libxslt-dev \
 	libzip-dev
 
-
-
 ARG PHP_EXTENSIONS="bcmath gd intl opcache pcntl pdo_mysql soap sockets xsl zip ftp"
 RUN PHP_VER="$(echo ${PHP_VERSION} | tr -d '.')" \
     && PHP_EXTS= && for ext in $PHP_EXTENSIONS; do \
@@ -34,7 +32,7 @@ RUN PHP_VER="$(echo ${PHP_VERSION} | tr -d '.')" \
     && docker-php-ext-install -j$(nproc) ${PHP_EXTS} \
     # Cleanup - Remove build dependencies and temp files
 	&& docker-php-source delete \
-    && apk  del build-deps \
+    && apk del build-deps \
     && rm -rf /tmp/* /var/cache/apk/*
 
 COPY custom.ini /usr/local/etc/php/conf.d/
@@ -42,19 +40,23 @@ COPY custom.ini /usr/local/etc/php/conf.d/
 #
 # Helper Tools
 #
-RUN curl -sOL https://getcomposer.org/download/2.0.13/composer.phar && \
+RUN if [[ "$PHP_VERSION" = 7.4* ]]; then \
+        curl -sOL https://getcomposer.org/download/2.2.26/composer.phar; \
+    else \
+        curl -sOL https://getcomposer.org/download/2.9.5/composer.phar; \
+    fi && \
     mv composer.phar /usr/local/bin/composer && \
     chmod 755 /usr/local/bin/composer && \
-    composer self-update
+    composer --version
 
 RUN set -e; \
-    if [ "$PHP_VERSION" = "7.4" ]; then \
+    if [[ "$PHP_VERSION" = 7.4* ]]; then \
         url="https://files.magerun.net/n98-magerun2-7.5.0.phar"; \
-    elif [ "$PHP_VERSION" = "7.3" ]; then \
+    elif [[ "$PHP_VERSION" = 7.3* ]]; then \
         url="https://files.magerun.net/n98-magerun2-6.1.1.phar"; \
-    elif [ "$PHP_VERSION" = "7.2" ]; then \
+    elif [[ "$PHP_VERSION" = 7.2* ]]; then \
         url="https://files.magerun.net/n98-magerun2-4.7.0.phar"; \
-    elif [ "$PHP_VERSION" = "7.1" ]; then \
+    elif [[ "$PHP_VERSION" = 7.1* ]]; then \
         url="https://files.magerun.net/n98-magerun-1.103.2.phar"; \
     else \
         url="https://files.magerun.net/n98-magerun2-latest.phar"; \
@@ -69,4 +71,4 @@ RUN set -e; \
 #
 # Additional Tools
 #
-RUN apk add --no-cache jq yq
+RUN apk add --no-cache jq yq git patch
