@@ -5,6 +5,13 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+  attestations: write
+  security-events: write
+
 env:
   DOCKER_BUILDKIT: 1
   BUILDKIT_PROGRESS: plain
