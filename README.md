@@ -1,7 +1,7 @@
 # Docker Images for Magento Testing
 
 [![Build and Push](https://github.com/SamJUK/magento-ci-testing-env/actions/workflows/build-and-push.yml/badge.svg)](https://github.com/SamJUK/magento-ci-testing-env/actions/workflows/build-and-push.yml)
-[![Security Scan](https://github.com/SamJUK/magento-ci-testing-env/actions/workflows/security-scan.yml/badge.svg)](https://github.com/SamJUK/magento-ci-testing-env/actions/workflows/security-scan.yml)
+[![Security Scan](https://github.com/SamJUK/magento-ci-testing-env/actions/workflows/secret-scan-pr.yml/badge.svg)](https://github.com/SamJUK/magento-ci-testing-env/actions/workflows/security-scan.yml)
 
 A collection of docker images, aimed at facilitating Unit / Integration / E2E testing Magento modules & stores within CI Pipelines.
 
