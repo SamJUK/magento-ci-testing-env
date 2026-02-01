@@ -60,7 +60,7 @@ RUN php bin/magento module:enable --all \
     && php bin/magento setup:di:compile \
     && php bin/magento setup:static-content:deploy -f -s compact --symlink-locale --jobs=$(nproc) \
     && rm -rf var/view_preprocessed/* var/cache/* var/page_cache/* var/generation/* \
-    && rm -rf ./patches/ ./scripts/
+    && rm -rf ./scripts/
 
 # Add our env.php
 COPY env.php app/etc/env.php
