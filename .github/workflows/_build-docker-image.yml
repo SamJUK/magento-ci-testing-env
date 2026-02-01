@@ -68,13 +68,13 @@ jobs:
           
           # Set context and dockerfile based on build type
           if [ "${{ inputs.build-type }}" = "base" ]; then
-            echo "context=./base" >> $GITHUB_OUTPUT
-            echo "dockerfile=./base/Dockerfile" >> $GITHUB_OUTPUT
+            echo "context=./src/base" >> $GITHUB_OUTPUT
+            echo "dockerfile=./src/base/Dockerfile" >> $GITHUB_OUTPUT
             echo "sbom-format=spdx-json" >> $GITHUB_OUTPUT
             echo "sbom-ext=spdx.json" >> $GITHUB_OUTPUT
           else
-            echo "context=./magento" >> $GITHUB_OUTPUT
-            echo "dockerfile=./magento/Dockerfile" >> $GITHUB_OUTPUT
+            echo "context=./src/magento" >> $GITHUB_OUTPUT
+            echo "dockerfile=./src/magento/Dockerfile" >> $GITHUB_OUTPUT
             echo "sbom-format=cyclonedx" >> $GITHUB_OUTPUT
             echo "sbom-ext=cdx.json" >> $GITHUB_OUTPUT
           fi
