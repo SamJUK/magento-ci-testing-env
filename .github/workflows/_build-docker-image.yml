@@ -112,27 +112,8 @@ jobs:
           flavor: |
             latest=false
 
-      - name: Build image for testing
+      - name: Build and push image
         id: build
-        uses: docker/build-push-action@v6
-        with:
-          context: ${{ steps.params.outputs.context }}
-          file: ${{ steps.params.outputs.dockerfile }}
-          platforms: linux/amd64
-          push: false
-          load: true
-          tags: samjuk/${{ inputs.image-name }}:${{ inputs.tag-suffix }}
-          build-args: ${{ inputs.build-args }}
-          cache-from: type=gha,scope=${{ inputs.cache-scope }}
-          cache-to: type=gha,mode=max,scope=${{ inputs.cache-scope }}
-
-      - name: Run unit tests
-        if: inputs.build-type != 'base'
-        run: |
-          sh tests/unit/test.sh "samjuk/${{ inputs.image-name }}:${{ inputs.tag-suffix }}"
-
-      - name: Push multi-platform image
-        id: push
         uses: docker/build-push-action@v6
         with:
           context: ${{ steps.params.outputs.context }}
@@ -144,14 +125,13 @@ jobs:
           build-args: ${{ inputs.build-args }}
           provenance: mode=max
           sbom: true
-          cache-from: type=gha,scope=${{ inputs.cache-scope }}
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3
 
       - name: Sign image with Cosign
         env:
-          DIGEST: ${{ steps.push.outputs.digest }}
+          DIGEST: ${{ steps.build.outputs.digest }}
         run: |
           cosign sign --yes \
             samjuk/${{ inputs.image-name }}@${DIGEST}
@@ -190,5 +170,5 @@ jobs:
       - name: Image digest
         run: |
           echo "Image built and pushed successfully!"
-          echo "Digest: ${{ steps.push.outputs.digest }}"
+          echo "Digest: ${{ steps.build.outputs.digest }}"
           echo "Tags: ${{ steps.meta.outputs.tags }}"

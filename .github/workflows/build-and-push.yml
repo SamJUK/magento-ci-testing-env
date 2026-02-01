@@ -185,8 +185,8 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Build Results" >> $GITHUB_STEP_SUMMARY
           echo "- Base Images: ${{ needs.build-base-images.result }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Magento Images (with unit tests): ${{ needs.build-magento-images.result }}" >> $GITHUB_STEP_SUMMARY
-          echo "- Mage-OS Images (with unit tests): ${{ needs.build-mageos-images.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Magento Images: ${{ needs.build-magento-images.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Mage-OS Images: ${{ needs.build-mageos-images.result }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Registries" >> $GITHUB_STEP_SUMMARY
           echo "- Docker Hub: https://hub.docker.com/u/samjuk" >> $GITHUB_STEP_SUMMARY
