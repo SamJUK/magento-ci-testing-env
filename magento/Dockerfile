@@ -64,3 +64,9 @@ RUN php bin/magento module:enable --all \
 
 # Add our env.php
 COPY env.php app/etc/env.php
+
+# Set Permissions
+RUN chown -R www-data:www-data /var/www/html \
+    && find /var/www/html -type d -exec chmod 755 {} + \
+    && find /var/www/html -type f -exec chmod 644 {} + \
+    && chmod 755 /var/www/html/bin/magento

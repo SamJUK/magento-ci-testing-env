@@ -101,24 +101,7 @@ $defaultConfig = array_merge(
                 'type' => '0',
                 'code' => 'Magento/luma'
             ]
-        ],
-        'system' => [
-            'default' => [
-                'dev' => [
-                    'js' => [
-                        'merge_files' => 1,
-                        'minify_files' => 1,
-                    ],
-                    'css' => [
-                        'minify_files' => 1,
-                        'merge_css_files' => 1,
-                    ],
-                    'template' => [
-                        'minify_html' => 1
-                    ]
-                ]
-            ]
-        ],
+        ]
     ]
 );
 
