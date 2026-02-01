@@ -1,0 +1,13 @@
+{
+    "name": "acme/example-module",
+    "description": "N/A",
+    "type": "magento2-module",
+    "autoload": {
+        "files": [
+            "registration.php"
+        ],
+        "psr-4": {
+            "Acme\\ExampleModule\\": ""
+        }
+    }
+}

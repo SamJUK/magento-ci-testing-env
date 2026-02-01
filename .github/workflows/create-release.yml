@@ -1,0 +1,287 @@
+name: Create Draft Release
+
+on:
+  workflow_run:
+    workflows: ["Build and Push Docker Images"]
+    types:
+      - completed
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    name: Create Draft Release
+    runs-on: ubuntu-latest
+    # Only create release if the build workflow succeeded and was triggered by a tag
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      startsWith(github.event.workflow_run.head_branch, 'v')
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_branch }}
+          fetch-depth: 0
+
+      - name: Get tag information
+        id: tag-info
+        run: |
+          TAG_NAME="${{ github.event.workflow_run.head_branch }}"
+          echo "tag-name=$TAG_NAME" >> $GITHUB_OUTPUT
+          
+          # Get the previous tag for changelog generation
+          PREVIOUS_TAG=$(git tag --sort=-version:refname | grep -A1 "^$TAG_NAME$" | tail -n1 || echo "")
+          echo "previous-tag=$PREVIOUS_TAG" >> $GITHUB_OUTPUT
+          
+          # Check if this is a pre-release
+          if [[ "$TAG_NAME" =~ -(alpha|beta|rc) ]]; then
+            echo "is-prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "is-prerelease=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: sbom-*
+          path: ./sboms
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Prepare SBOM files
+        id: prepare-sboms
+        run: |
+          # Create a release-sboms directory with flattened structure
+          mkdir -p release-sboms
+          
+          # Move all SBOM files to release-sboms with descriptive names
+          find ./sboms -type f \( -name "*.spdx.json" -o -name "*.cdx.json" \) 2>/dev/null | while read file; do
+            file_basename=$(basename "$file")
+            # Extract the version info from parent directory name
+            parent=$(basename "$(dirname "$file")")
+            # Copy with parent directory prefix for clarity
+            cp "$file" "release-sboms/${parent}-${file_basename}"
+          done
+          
+          # Count SBOMs
+          SBOM_COUNT=$(find release-sboms -type f 2>/dev/null | wc -l | tr -d ' ')
+          echo "count=$SBOM_COUNT" >> $GITHUB_OUTPUT
+          echo "Found $SBOM_COUNT SBOM files to attach"
+          
+          # List all SBOMs
+          if [ "$SBOM_COUNT" -gt 0 ]; then
+            echo "SBOMs to attach:"
+            ls -lh release-sboms/
+          else
+            echo "Warning: No SBOM files found"
+          fi
+
+      - name: Generate image manifest with digests
+        id: generate-manifest
+        run: |
+          TAG_NAME="${{ steps.tag-info.outputs.tag-name }}"
+          mkdir -p release-artifacts
+          
+          # Create a detailed manifest of all images built
+          cat > release-artifacts/IMAGE_MANIFEST.txt << EOF
+          # Docker Image Manifest
+          # Release: ${TAG_NAME}
+          # Generated: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          
+          This release includes the following Docker images.
+          All images are signed with Cosign and include attestations.
+          
+          ## Base Images (PHP Runtime Environments)
+          EOF
+          
+          jq -r 'keys[]' manifest.json | while read php; do
+            echo "" >> release-artifacts/IMAGE_MANIFEST.txt
+            echo "### PHP ${php}" >> release-artifacts/IMAGE_MANIFEST.txt
+            echo "- samjuk/magento-base-ci-testing-env:${php}" >> release-artifacts/IMAGE_MANIFEST.txt
+            echo "- samjuk/magento-base-ci-testing-env:${php}-${TAG_NAME}" >> release-artifacts/IMAGE_MANIFEST.txt
+            echo "- ghcr.io/samjuk/magento-base-ci-testing-env:${php}" >> release-artifacts/IMAGE_MANIFEST.txt
+            echo "- ghcr.io/samjuk/magento-base-ci-testing-env:${php}-${TAG_NAME}" >> release-artifacts/IMAGE_MANIFEST.txt
+          done
+          
+          echo "" >> release-artifacts/IMAGE_MANIFEST.txt
+          echo "## Magento Images" >> release-artifacts/IMAGE_MANIFEST.txt
+          
+          jq -r 'to_entries[] | .key as $php | .value.magento[]? | "\(.)-php\($php)"' manifest.json | while read version; do
+            echo "" >> release-artifacts/IMAGE_MANIFEST.txt
+            echo "### Magento ${version}" >> release-artifacts/IMAGE_MANIFEST.txt
+            echo "- samjuk/magento-ci-testing-env:${version}" >> release-artifacts/IMAGE_MANIFEST.txt
+            echo "- samjuk/magento-ci-testing-env:${version}-${TAG_NAME}" >> release-artifacts/IMAGE_MANIFEST.txt
+            echo "- ghcr.io/samjuk/magento-ci-testing-env:${version}" >> release-artifacts/IMAGE_MANIFEST.txt
+            echo "- ghcr.io/samjuk/magento-ci-testing-env:${version}-${TAG_NAME}" >> release-artifacts/IMAGE_MANIFEST.txt
+          done
+          
+          if jq -e 'to_entries[] | .value."mage-os" // empty' manifest.json > /dev/null 2>&1; then
+            echo "" >> release-artifacts/IMAGE_MANIFEST.txt
+            echo "## Mage-OS Images" >> release-artifacts/IMAGE_MANIFEST.txt
+            
+            jq -r 'to_entries[] | .key as $php | .value."mage-os"[]? | "\(.)-php\($php)"' manifest.json | while read version; do
+              echo "" >> release-artifacts/IMAGE_MANIFEST.txt
+              echo "### Mage-OS ${version}" >> release-artifacts/IMAGE_MANIFEST.txt
+              echo "- samjuk/mage-os-ci-testing-env:${version}" >> release-artifacts/IMAGE_MANIFEST.txt
+              echo "- samjuk/mage-os-ci-testing-env:${version}-${TAG_NAME}" >> release-artifacts/IMAGE_MANIFEST.txt
+              echo "- ghcr.io/samjuk/mage-os-ci-testing-env:${version}" >> release-artifacts/IMAGE_MANIFEST.txt
+              echo "- ghcr.io/samjuk/mage-os-ci-testing-env:${version}-${TAG_NAME}" >> release-artifacts/IMAGE_MANIFEST.txt
+            done
+          fi
+          
+          echo "" >> release-artifacts/IMAGE_MANIFEST.txt
+          echo "## Verification" >> release-artifacts/IMAGE_MANIFEST.txt
+          echo "" >> release-artifacts/IMAGE_MANIFEST.txt
+          echo "All images are signed with Cosign. Verify signatures with:" >> release-artifacts/IMAGE_MANIFEST.txt
+          echo '```bash' >> release-artifacts/IMAGE_MANIFEST.txt
+          echo 'cosign verify samjuk/<image-name>:<tag> \' >> release-artifacts/IMAGE_MANIFEST.txt
+          echo '  --certificate-identity-regexp="https://github.com/SamJUK" \' >> release-artifacts/IMAGE_MANIFEST.txt
+          echo '  --certificate-oidc-issuer="https://token.actions.githubusercontent.com"' >> release-artifacts/IMAGE_MANIFEST.txt
+          echo '```' >> release-artifacts/IMAGE_MANIFEST.txt
+          
+          # Copy the build manifest
+          cp manifest.json release-artifacts/build-manifest.json
+          
+          echo "Generated image manifest"
+
+      - name: Delete existing draft release if present
+        id: check-release
+        run: |
+          TAG_NAME="${{ steps.tag-info.outputs.tag-name }}"
+          
+          # Check if a release already exists for this tag
+          if gh release view "$TAG_NAME" 2>/dev/null; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Found existing release for $TAG_NAME - deleting to recreate fresh..."
+            gh release delete "$TAG_NAME" --yes --cleanup-tag=false
+            echo "Existing release deleted"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "No existing release found - will create new one"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate release notes
+        id: release-notes
+        run: |
+          TAG_NAME="${{ steps.tag-info.outputs.tag-name }}"
+          PREVIOUS_TAG="${{ steps.tag-info.outputs.previous-tag }}"
+          
+          # Create release notes file
+          cat > release_notes.md << 'EOF'
+          ## Docker Images Built
+          
+          This release includes the following Docker images:
+          
+          ### Base Images (PHP)
+          EOF
+          
+          # Extract PHP versions from manifest.json
+          jq -r 'keys[]' manifest.json | while read php; do
+            echo "- \`samjuk/magento-base-ci-testing-env:${php}\`" >> release_notes.md
+            echo "- \`ghcr.io/samjuk/magento-base-ci-testing-env:${php}\`" >> release_notes.md
+          done
+          
+          echo "" >> release_notes.md
+          echo "### Magento Images" >> release_notes.md
+          
+          # Extract Magento versions
+          jq -r 'to_entries[] | .key as $php | .value.magento[]? | "\(.)-php\($php)"' manifest.json | while read version; do
+            echo "- \`samjuk/magento-ci-testing-env:${version}\`" >> release_notes.md
+            echo "- \`ghcr.io/samjuk/magento-ci-testing-env:${version}\`" >> release_notes.md
+          done
+          
+          # Extract Mage-OS versions if they exist
+          if jq -e 'to_entries[] | .value."mage-os" // empty' manifest.json > /dev/null 2>&1; then
+            echo "" >> release_notes.md
+            echo "### Mage-OS Images" >> release_notes.md
+            jq -r 'to_entries[] | .key as $php | .value."mage-os"[]? | "\(.)-php\($php)"' manifest.json | while read version; do
+              echo "- \`samjuk/mage-os-ci-testing-env:${version}\`" >> release_notes.md
+              echo "- \`ghcr.io/samjuk/mage-os-ci-testing-env:${version}\`" >> release_notes.md
+            done
+          fi
+          
+          echo "" >> release_notes.md
+          echo "## Registries" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "- **Docker Hub:** https://hub.docker.com/u/samjuk" >> release_notes.md
+          echo "- **GitHub Container Registry:** https://github.com/orgs/SamJUK/packages?repo_name=magento-ci-testing-env" >> release_notes.md
+          
+          # Add SBOM information
+          SBOM_COUNT="${{ steps.prepare-sboms.outputs.count }}"
+          if [ "$SBOM_COUNT" -gt 0 ]; then
+            echo "" >> release_notes.md
+            echo "## 📦 Software Bill of Materials (SBOM)" >> release_notes.md
+            echo "" >> release_notes.md
+            echo "This release includes ${SBOM_COUNT} SBOM files attached below:" >> release_notes.md
+            echo "" >> release_notes.md
+            echo "- Base images use **SPDX** format (\`.spdx.json\`)" >> release_notes.md
+            echo "- Magento/Mage-OS images use **CycloneDX** format (\`.cdx.json\`)" >> release_notes.md
+            echo "" >> release_notes.md
+            echo "These files provide a complete inventory of all software components and dependencies in each Docker image." >> release_notes.md
+          fi
+          
+          echo "" >> release_notes.md
+          echo "## 📋 Release Artifacts" >> release_notes.md
+          echo "" >> release_notes.md
+          echo "- **IMAGE_MANIFEST.txt** - Complete list of all Docker images with tags and verification instructions" >> release_notes.md
+          echo "- **build-manifest.json** - Build configuration showing PHP/Magento/Mage-OS version matrix" >> release_notes.md
+          echo "- **SBOM files** - Software Bill of Materials for each image (${SBOM_COUNT} files)" >> release_notes.md
+          
+          # Add changelog if there's a previous tag
+          if [ -n "$PREVIOUS_TAG" ]; then
+            echo "" >> release_notes.md
+            echo "## Changes Since $PREVIOUS_TAG" >> release_notes.md
+            echo "" >> release_notes.md
+            git log --pretty=format:"- %s (%h)" ${PREVIOUS_TAG}..${TAG_NAME} >> release_notes.md || true
+          fi
+          
+          # Set output
+          echo "notes-file=release_notes.md" >> $GITHUB_OUTPUT
+
+      - name: Create Draft Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag-info.outputs.tag-name }}
+          name: Release ${{ steps.tag-info.outputs.tag-name }}
+          body_path: ${{ steps.release-notes.outputs.notes-file }}
+          draft: true
+          prerelease: ${{ steps.tag-info.outputs.is-prerelease }}
+          generate_release_notes: false
+          # Attach all artifacts (using globs that won't fail if empty)
+          files: |
+            release-sboms/*
+            release-artifacts/*
+          # If release exists or files don't match, don't fail
+          fail_on_unmatched_files: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Summary
+        if: always()
+        run: |
+          if [ "${{ steps.check-release.outputs.exists }}" = "true" ]; then
+            echo "## Draft Release Recreated ♻️" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "An existing draft release was deleted and recreated with fresh artifacts." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "## Draft Release Created ✨" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "A new draft release has been created." >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Tag:** ${{ steps.tag-info.outputs.tag-name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Pre-release:** ${{ steps.tag-info.outputs.is-prerelease }}" >> $GITHUB_STEP_SUMMARY
+          echo "**SBOMs Attached:** ${{ steps.prepare-sboms.outputs.count }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Build Workflow Run:** [#${{ github.event.workflow_run.run_number }}](${{ github.event.workflow_run.html_url }})" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "The draft release is ready for review. You can:" >> $GITHUB_STEP_SUMMARY
+          echo "- Edit the release notes" >> $GITHUB_STEP_SUMMARY
+          echo "- Add additional assets" >> $GITHUB_STEP_SUMMARY
+          echo "- Publish the release when ready" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "[View Releases](https://github.com/${{ github.repository }}/releases)" >> $GITHUB_STEP_SUMMARY

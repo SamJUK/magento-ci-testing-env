@@ -1,0 +1,10 @@
+repos:
+  - repo: local
+    hooks:
+      - id: update-supported-versions-table
+        name: Update Supported Versions Table
+        entry: python3 scripts/update-supported-versions-table.py
+        language: system
+        pass_filenames: false
+        always_run: false       # Only run when matching files change
+        files: ^manifest\.json$  # Regex: run only if manifest.json changed
