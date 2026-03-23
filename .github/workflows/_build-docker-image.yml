@@ -138,34 +138,35 @@ jobs:
           cosign sign --yes \
             ghcr.io/samjuk/${{ inputs.image-name }}@${DIGEST}
 
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # master
-        with:
-          image-ref: samjuk/${{ inputs.image-name }}:${{ inputs.tag-suffix }}
-          format: 'sarif'
-          output: trivy-${{ inputs.tag-suffix }}.sarif
-          severity: 'CRITICAL,HIGH'
+      # Disabled due to ongoing Trivy incident
+      # - name: Run Trivy vulnerability scanner
+      #   uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # master
+      #   with:
+      #     image-ref: samjuk/${{ inputs.image-name }}:${{ inputs.tag-suffix }}
+      #     format: 'sarif'
+      #     output: trivy-${{ inputs.tag-suffix }}.sarif
+      #     severity: 'CRITICAL,HIGH'
 
-      - name: Upload Trivy results
-        uses: github/codeql-action/upload-sarif@38697555549f1db7851b81482ff19f1fa5c4fedc # v4
-        if: always()
-        with:
-          sarif_file: trivy-${{ inputs.tag-suffix }}.sarif
-          category: ${{ inputs.tag-suffix }}
+      # - name: Upload Trivy results
+      #   uses: github/codeql-action/upload-sarif@38697555549f1db7851b81482ff19f1fa5c4fedc # v4
+      #   if: always()
+      #   with:
+      #     sarif_file: trivy-${{ inputs.tag-suffix }}.sarif
+      #     category: ${{ inputs.tag-suffix }}
 
-      - name: Generate SBOM
-        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # master
-        with:
-          image-ref: samjuk/${{ inputs.image-name }}:${{ inputs.tag-suffix }}
-          format: ${{ steps.params.outputs.sbom-format }}
-          output: sbom-${{ inputs.tag-suffix }}.${{ steps.params.outputs.sbom-ext }}
+      # - name: Generate SBOM
+      #   uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # master
+      #   with:
+      #     image-ref: samjuk/${{ inputs.image-name }}:${{ inputs.tag-suffix }}
+      #     format: ${{ steps.params.outputs.sbom-format }}
+      #     output: sbom-${{ inputs.tag-suffix }}.${{ steps.params.outputs.sbom-ext }}
 
-      - name: Upload SBOM artifact
-        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
-        with:
-          name: sbom-${{ inputs.tag-suffix }}
-          path: sbom-${{ inputs.tag-suffix }}.${{ steps.params.outputs.sbom-ext }}
-          retention-days: 90
+      # - name: Upload SBOM artifact
+      #   uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+      #   with:
+      #     name: sbom-${{ inputs.tag-suffix }}
+      #     path: sbom-${{ inputs.tag-suffix }}.${{ steps.params.outputs.sbom-ext }}
+      #     retention-days: 90
 
       - name: Image digest
         run: |
