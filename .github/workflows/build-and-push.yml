@@ -30,14 +30,14 @@ jobs:
           fetch-depth: 0  # Fetch all history for TruffleHog to scan
 
       - name: Run TruffleHog secret scan
-        uses: trufflesecurity/trufflehog@116e7171542d2f1dad8810f00dcfacbe0b809183 # v3.92.5
+        uses: trufflesecurity/trufflehog@17456f8c7d042d8c82c9a8ca9e937231f9f42e26 # v3.95.2
         with:
           path: ./
           extra_args: --only-verified
 
       - name: TruffleHog scan (all secrets, non-blocking)
         if: always()
-        uses: trufflesecurity/trufflehog@116e7171542d2f1dad8810f00dcfacbe0b809183 # v3.92.5
+        uses: trufflesecurity/trufflehog@17456f8c7d042d8c82c9a8ca9e937231f9f42e26 # v3.95.2
         continue-on-error: true
         with:
           path: ./
