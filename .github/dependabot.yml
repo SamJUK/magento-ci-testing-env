@@ -3,7 +3,9 @@ version: 2
 updates:
   # Docker base image updates for base/Dockerfile
   - package-ecosystem: "docker"
-    directory: "/base"
+    directories:
+      - "/base"
+      - "/magento"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -12,30 +14,15 @@ updates:
     labels:
       - "dependencies"
       - "docker"
-      - "base-image"
     commit-message:
       prefix: "chore(docker)"
       include: "scope"
     reviewers:
       - "SamJUK"
-    
-  # Docker application image updates for magento/Dockerfile
-  - package-ecosystem: "docker"
-    directory: "/magento"
-    schedule:
-      interval: "weekly"
-      day: "monday"
-      time: "09:00"
-    open-pull-requests-limit: 5
-    labels:
-      - "dependencies"
-      - "docker"
-      - "app-image"
-    commit-message:
-      prefix: "chore(docker)"
-      include: "scope"
-    reviewers:
-      - "SamJUK"
+    groups:
+      docker-dependencies:
+        patterns:
+          - "*"
 
   # GitHub Actions workflow updates
   - package-ecosystem: "github-actions"
