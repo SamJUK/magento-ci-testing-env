@@ -4,8 +4,8 @@ updates:
   # Docker base image updates for base/Dockerfile
   - package-ecosystem: "docker"
     directories:
-      - "/base"
-      - "/magento"
+      - "/src/base"
+      - "/src/magento"
     schedule:
       interval: "weekly"
       day: "monday"
@@ -20,9 +20,17 @@ updates:
     reviewers:
       - "SamJUK"
     groups:
-      docker-dependencies:
+      docker-dependencies-major:
         patterns:
           - "*"
+        update-types:
+          - "major"
+      docker-dependencies-minor:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
 
   # GitHub Actions workflow updates
   - package-ecosystem: "github-actions"
