@@ -41,7 +41,15 @@ updates:
     reviewers:
       - "SamJUK"
     groups:
-      github-actions:
+      github-actions-major:
         patterns:
           - "*"
+        update-types:
+          - "major"
+      github-actions-minor-patch:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
 
