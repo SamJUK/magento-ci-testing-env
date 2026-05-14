@@ -149,6 +149,7 @@ After building each container, we run a few tests to assert it is fit for purpos
 Check [`manifest.json`](manifest.json) for the complete list of supported PHP and Magento/Mage-OS versions.
 
 <!-- Supported Version Table -->
+### Supported Magento Versions
 | Magento Version | 8.5 | 8.4 | 8.3 | 8.2 | 8.1 | 7.4 |
 |---|---|---|---|---|---|---|
 | 2.4.9 | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
@@ -221,6 +222,25 @@ Check [`manifest.json`](manifest.json) for the complete list of supported PHP an
 | 2.4.2-p2 | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
 | 2.4.2-p1 | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
 | 2.4.2 | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+
+### Supported Mage-OS Versions
+| Mage-OS Version | 8.5 | 8.4 | 8.3 | 8.2 | 8.1 | 7.4 |
+|---|---|---|---|---|---|---|
+| 2.3.0 | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| 2.2.1 | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| 2.2.0 | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| 2.1.0 | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| 2.0.0 | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ |
+| 1.3.1 | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| 1.3.0 | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| 1.2.0 | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| 1.1.0 | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| 1.0.6 | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ |
+| 1.0.4 | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ |
+| 1.0.3 | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ |
+| 1.0.2 | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ |
+| 1.0.1 | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ |
+| 1.0.0 | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ |
 <!-- End Supported Version Table -->
 
 ## 📝 License

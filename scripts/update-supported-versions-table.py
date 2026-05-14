@@ -23,6 +23,11 @@ for php, value in data.items():
     for version in value.get("magento", []):
         magento_map.setdefault(version, set()).add(php)
 
+mageos_map = {}
+for php, value in data.items():
+    for version in value.get("mage-os", []):
+        mageos_map.setdefault(version, set()).add(php)
+
 # --- Helper to sort Magento versions properly (newest first) ---
 def magento_sort_key(v):
     main, *patch = v.split("-p")
@@ -31,8 +36,9 @@ def magento_sort_key(v):
     return (major, minor, patch_main, patch_num)
 
 magento_versions = sorted(magento_map.keys(), key=magento_sort_key, reverse=True)
+mageos_versions = sorted(mageos_map.keys(), key=magento_sort_key, reverse=True)
 
-# --- Build Markdown table ---
+# --- Build Magento Markdown table ---
 header = ["Magento Version"] + php_versions
 lines = ["| " + " | ".join(header) + " |",
          "|" + "|".join(["---"] * len(header)) + "|"]
@@ -41,7 +47,18 @@ for mver in magento_versions:
     row = [mver] + ["✅" if php in magento_map[mver] else "❌" for php in php_versions]
     lines.append("| " + " | ".join(row) + " |")
 
-table_md = "\n".join(lines)
+table_md = "### Supported Magento Versions\n" + "\n".join(lines)
+
+# --- Build Mage-OS Markdown table ---
+header = ["Mage-OS Version"] + php_versions
+lines = ["| " + " | ".join(header) + " |",
+         "|" + "|".join(["---"] * len(header)) + "|"]
+
+for mver in mageos_versions:
+    row = [mver] + ["✅" if php in mageos_map[mver] else "❌" for php in php_versions]
+    lines.append("| " + " | ".join(row) + " |")
+
+table_md += "\n\n### Supported Mage-OS Versions\n" + "\n".join(lines)
 
 # --- Replace table in README.md ---
 readme_path = Path(README_MD)
