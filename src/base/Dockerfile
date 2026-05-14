@@ -47,9 +47,9 @@ COPY custom.ini /usr/local/etc/php/conf.d/
 #
 RUN --mount=type=cache,target=/tmp/composer-download \
     if [[ "$PHP_VERSION" = 7.4* ]]; then \
-        curl -sOL https://getcomposer.org/download/2.2.26/composer.phar; \
+        curl -sOL https://getcomposer.org/download/2.2.28/composer.phar; \
     else \
-        curl -sOL https://getcomposer.org/download/2.9.5/composer.phar; \
+        curl -sOL https://getcomposer.org/download/2.9.8/composer.phar; \
     fi && \
     mv composer.phar /usr/local/bin/composer && \
     chmod 755 /usr/local/bin/composer && \
