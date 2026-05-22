@@ -226,6 +226,7 @@ Check [`manifest.json`](manifest.json) for the complete list of supported PHP an
 ### Supported Mage-OS Versions
 | Mage-OS Version | 8.5 | 8.4 | 8.3 | 8.2 | 8.1 | 7.4 |
 |---|---|---|---|---|---|---|
+| 3.0.0 | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | 2.3.0 | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ |
 | 2.2.1 | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ |
 | 2.2.0 | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ |
