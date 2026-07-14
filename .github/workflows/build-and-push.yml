@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - 'v*'
+    branches:
+      - master
 
 permissions:
   contents: read
@@ -87,6 +89,7 @@ jobs:
   build-base-images:
     name: Build Base Image (PHP ${{ matrix.php }})
     needs: prepare-matrix
+    if: startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: read
       packages: write
@@ -113,7 +116,7 @@ jobs:
   build-magento-images:
     name: Build Magento Image (${{ matrix.version }}-php${{ matrix.php }})
     needs: [prepare-matrix, build-base-images]
-    if: needs.prepare-matrix.outputs.matrix-magento != '{"include":[]}'
+    if: startsWith(github.ref, 'refs/tags/') && needs.prepare-matrix.outputs.matrix-magento != '{"include":[]}'
     permissions:
       contents: read
       packages: write
@@ -142,7 +145,7 @@ jobs:
   build-mageos-images:
     name: Build Mage-OS Image (${{ matrix.version }}-php${{ matrix.php }})
     needs: [prepare-matrix, build-base-images]
-    if: needs.prepare-matrix.outputs.matrix-mageos != '{"include":[]}'
+    if: startsWith(github.ref, 'refs/tags/') && needs.prepare-matrix.outputs.matrix-mageos != '{"include":[]}'
     permissions:
       contents: read
       packages: write
@@ -168,10 +171,20 @@ jobs:
       dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
       github-token: ${{ secrets.GITHUB_TOKEN }}
 
+  validate-images:
+    name: Validate Images (build + smoke test, no publish)
+    needs: prepare-matrix
+    if: github.ref == 'refs/heads/master'
+    uses: ./.github/workflows/_validate-docker-image.yml
+    with:
+      matrix-base: ${{ needs.prepare-matrix.outputs.matrix-base }}
+      matrix-magento: ${{ needs.prepare-matrix.outputs.matrix-magento }}
+      matrix-mageos: ${{ needs.prepare-matrix.outputs.matrix-mageos }}
+
   summary:
     name: Build Summary
     runs-on: ubuntu-latest
-    needs: [secret-scan, prepare-matrix, build-base-images, build-magento-images, build-mageos-images]
+    needs: [secret-scan, prepare-matrix, build-base-images, build-magento-images, build-mageos-images, validate-images]
     if: always()
     steps:
       - name: Check build status
@@ -187,6 +200,7 @@ jobs:
           echo "- Base Images: ${{ needs.build-base-images.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- Magento Images: ${{ needs.build-magento-images.result }}" >> $GITHUB_STEP_SUMMARY
           echo "- Mage-OS Images: ${{ needs.build-mageos-images.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Validation (master push, no publish): ${{ needs.validate-images.result }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Registries" >> $GITHUB_STEP_SUMMARY
           echo "- Docker Hub: https://hub.docker.com/u/samjuk" >> $GITHUB_STEP_SUMMARY
@@ -197,7 +211,8 @@ jobs:
           needs.secret-scan.result == 'failure' ||
           needs.build-base-images.result == 'failure' ||
           needs.build-magento-images.result == 'failure' ||
-          needs.build-mageos-images.result == 'failure'
+          needs.build-mageos-images.result == 'failure' ||
+          needs.validate-images.result == 'failure'
         run: |
           echo "One or more builds failed!"
           exit 1
