@@ -22,7 +22,10 @@ jobs:
             const body = [
               '### 🧪 On-demand image builds',
               '',
-              'This repo builds a large matrix of Docker images, so full builds only run on `master` push and on release tags. To build + smoke-test specific images against this PR, comment (repo owner only):',
+              'Comment `/test <filters>` (repo owner only) to build + smoke-test specific images against this PR.',
+              '',
+              '<details>',
+              '<summary>Usage</summary>',
               '',
               '```',
               '/test magento 2.4.9 8.5',
@@ -40,7 +43,8 @@ jobs:
               '- Anything else is treated as a version filter (wildcards allowed, e.g. `2.4.8-p*`).',
               '- Any dimension you omit matches everything for that dimension - e.g. `/test magento` builds every Magento version across every supported PHP.',
               '',
-              'Builds here are local only (not pushed to any registry) and just confirm the image builds and runs - not a substitute for the full test suite.',
+              'Builds here are local only (not pushed to any registry) and just confirm the image builds and runs - not a substitute for the full test suite. Full builds otherwise only run on `master` push and release tags.',
+              '</details>',
             ].join('\n');
 
             await github.rest.issues.createComment({
