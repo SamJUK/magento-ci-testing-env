@@ -1,0 +1,51 @@
+name: PR Test Command Help
+
+on:
+  pull_request:
+    types: [opened]
+    branches:
+      - master
+      - main
+
+permissions:
+  pull-requests: write
+
+jobs:
+  comment:
+    name: Post /test instructions
+    runs-on: ubuntu-latest
+    steps:
+      - name: Comment with instructions
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7
+        with:
+          script: |
+            const body = [
+              '### 🧪 On-demand image builds',
+              '',
+              'This repo builds a large matrix of Docker images, so full builds only run on `master` push and on release tags. To build + smoke-test specific images against this PR, comment (repo owner only):',
+              '',
+              '```',
+              '/test magento 2.4.9 8.5',
+              '/test php8.5',
+              '/test magento',
+              '/test mage-os',
+              '/test magento php8.5',
+              '/test magento 2.4.8-p*',
+              '```',
+              '',
+              'Rules:',
+              '- Tokens can be given in any order.',
+              '- `magento` / `mage-os` filters by distro.',
+              '- `phpX.Y` (wildcards allowed, e.g. `php8.*`) filters by PHP version.',
+              '- Anything else is treated as a version filter (wildcards allowed, e.g. `2.4.8-p*`).',
+              '- Any dimension you omit matches everything for that dimension - e.g. `/test magento` builds every Magento version across every supported PHP.',
+              '',
+              'Builds here are local only (not pushed to any registry) and just confirm the image builds and runs - not a substitute for the full test suite.',
+            ].join('\n');
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.payload.pull_request.number,
+              body,
+            });

@@ -133,7 +133,34 @@ git tag v1.0.0
 git push origin v1.0.0
 ```
 
-For manual builds, use the [Manual Build workflow](https://github.com/SamJUK/magento-ci-testing-env/actions/workflows/manual-build.yml) in GitHub Actions.
+Every push to `master` also triggers a full build + smoke test of the entire matrix (no images are published) - this catches a broken `manifest.json` entry or Dockerfile change before it reaches a release.
+
+On a pull request, comment `/test <filters>` (repo owner only) to build + smoke-test a subset of the matrix against that PR - see the instructions comment posted automatically when a PR is opened.
+
+### Local development
+
+Build a single image or the whole matrix locally with `scripts/build.sh`:
+
+```bash
+# Build everything in manifest.json
+./scripts/build.sh
+
+# Build a single tag
+./scripts/build.sh samjuk/magento-base-ci-testing-env:8.3
+./scripts/build.sh samjuk/magento-ci-testing-env:2.4.8-php8.3
+
+# Force a rebuild even if the image already exists locally, and push after building
+./scripts/build.sh --force --push
+```
+
+After building, do a quick "does it run" check with `scripts/smoke-test.sh`:
+
+```bash
+./scripts/smoke-test.sh samjuk/magento-base-ci-testing-env:8.3 base
+./scripts/smoke-test.sh samjuk/magento-ci-testing-env:2.4.8-php8.3 magento
+```
+
+Magento/Mage-OS builds also run the `tests/unit` suite automatically via `build.sh`.
 
 ## 🩹 Patches
 Some older core Magento versions have known installation issues that we need to patch during the image build process. 

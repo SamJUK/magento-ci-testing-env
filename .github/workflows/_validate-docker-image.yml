@@ -1,0 +1,145 @@
+name: Reusable Docker Validate Workflow
+# Builds images locally (no registry push) and smoke-tests them. Used for the
+# master-push safety net and PR /test comment builds - anywhere we want to
+# know "does this build and run" without publishing anything.
+#
+# Base images are built once per PHP version and handed to the app-image jobs
+# as a build artifact (docker save/load), rather than rebuilding the base
+# image again for every app version - the release workflow gets this for
+# free via a registry push, but there's nothing to pull from here since
+# nothing is pushed.
+
+on:
+  workflow_call:
+    inputs:
+      matrix-base:
+        description: 'JSON {php: [...]} - PHP versions to validate the base image for'
+        required: true
+        type: string
+      matrix-magento:
+        description: 'JSON {include: [{php, version}]} - Magento images to validate'
+        required: false
+        type: string
+        default: '{"include":[]}'
+      matrix-mageos:
+        description: 'JSON {include: [{php, version}]} - Mage-OS images to validate'
+        required: false
+        type: string
+        default: '{"include":[]}'
+
+env:
+  DOCKER_BUILDKIT: 1
+  BUILDKIT_PROGRESS: plain
+
+jobs:
+  validate-base:
+    name: Validate Base Image (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(inputs.matrix-base) }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - name: Build base image
+        run: |
+          TAG="samjuk/magento-base-ci-testing-env:${{ matrix.php }}"
+          echo "tag=$TAG" >> $GITHUB_ENV
+          docker buildx build ./src/base -f ./src/base/Dockerfile \
+            --platform linux/amd64 \
+            --build-arg PHP_VERSION=${{ matrix.php }} \
+            --tag "$TAG" \
+            --load
+
+      - name: Smoke test base image
+        run: sh ./scripts/smoke-test.sh "$tag" base
+
+      - name: Save image for app-image jobs
+        run: docker save "$tag" | gzip > base-image.tar.gz
+
+      - name: Upload base image artifact
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: base-image-php${{ matrix.php }}
+          path: base-image.tar.gz
+          retention-days: 1
+
+  validate-magento:
+    name: Validate Magento Image (${{ matrix.version }}-php${{ matrix.php }})
+    needs: validate-base
+    if: inputs.matrix-magento != '{"include":[]}'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(inputs.matrix-magento) }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - name: Download base image artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: base-image-php${{ matrix.php }}
+
+      - name: Load base image
+        run: gunzip -c base-image.tar.gz | docker load
+
+      - name: Build Magento image
+        run: |
+          TAG="samjuk/magento-ci-testing-env:${{ matrix.version }}-php${{ matrix.php }}"
+          echo "tag=$TAG" >> $GITHUB_ENV
+          docker buildx build ./src/magento -f ./src/magento/Dockerfile \
+            --platform linux/amd64 \
+            --build-arg PHP_VERSION=${{ matrix.php }} \
+            --build-arg APP_DISTRO=magento \
+            --build-arg APP_VERSION=${{ matrix.version }} \
+            --tag "$TAG" \
+            --load
+
+      - name: Smoke test Magento image
+        run: sh ./scripts/smoke-test.sh "$tag" magento
+
+  validate-mageos:
+    name: Validate Mage-OS Image (${{ matrix.version }}-php${{ matrix.php }})
+    needs: validate-base
+    if: inputs.matrix-mageos != '{"include":[]}'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJson(inputs.matrix-mageos) }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
+
+      - name: Download base image artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: base-image-php${{ matrix.php }}
+
+      - name: Load base image
+        run: gunzip -c base-image.tar.gz | docker load
+
+      - name: Build Mage-OS image
+        run: |
+          TAG="samjuk/mage-os-ci-testing-env:${{ matrix.version }}-php${{ matrix.php }}"
+          echo "tag=$TAG" >> $GITHUB_ENV
+          docker buildx build ./src/magento -f ./src/magento/Dockerfile \
+            --platform linux/amd64 \
+            --build-arg PHP_VERSION=${{ matrix.php }} \
+            --build-arg APP_DISTRO=mage-os \
+            --build-arg APP_VERSION=${{ matrix.version }} \
+            --tag "$TAG" \
+            --load
+
+      - name: Smoke test Mage-OS image
+        run: sh ./scripts/smoke-test.sh "$tag" magento

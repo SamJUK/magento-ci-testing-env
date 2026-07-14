@@ -1,0 +1,113 @@
+name: PR Test Command
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  parse:
+    name: Parse /test command
+    runs-on: ubuntu-latest
+    if: >
+      github.event.issue.pull_request != null &&
+      github.event.comment.author_association == 'OWNER' &&
+      startsWith(github.event.comment.body, '/test')
+    outputs:
+      matrix-base: ${{ steps.filter.outputs.matrix-base }}
+      matrix-magento: ${{ steps.filter.outputs.matrix-magento }}
+      matrix-mageos: ${{ steps.filter.outputs.matrix-mageos }}
+      head-sha: ${{ steps.pr.outputs.head-sha }}
+      tokens: ${{ steps.tokens.outputs.tokens }}
+    steps:
+      - name: React to comment
+        run: |
+          gh api "repos/${{ github.repository }}/issues/comments/${{ github.event.comment.id }}/reactions" \
+            -f content=eyes --silent
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve PR head SHA
+        id: pr
+        run: |
+          HEAD_SHA=$(gh api "repos/${{ github.repository }}/pulls/${{ github.event.issue.number }}" --jq .head.sha)
+          echo "head-sha=$HEAD_SHA" >> $GITHUB_OUTPUT
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Checkout PR head
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          ref: ${{ steps.pr.outputs.head-sha }}
+
+      - name: Extract command tokens
+        id: tokens
+        env:
+          COMMENT_BODY: ${{ github.event.comment.body }}
+        run: |
+          # Strip the leading "/test" and collapse whitespace
+          TOKENS=$(echo "$COMMENT_BODY" | head -n1 | sed -E 's#^/test##' | xargs)
+          echo "tokens=$TOKENS" >> $GITHUB_OUTPUT
+
+      - name: Filter matrix
+        id: filter
+        env:
+          TOKENS: ${{ steps.tokens.outputs.tokens }}
+        run: |
+          RESULT=$(sh ./scripts/filter-matrix.sh $TOKENS)
+          echo "matrix-base=$(echo "$RESULT" | jq -c '."matrix-base"')" >> $GITHUB_OUTPUT
+          echo "matrix-magento=$(echo "$RESULT" | jq -c '."matrix-magento"')" >> $GITHUB_OUTPUT
+          echo "matrix-mageos=$(echo "$RESULT" | jq -c '."matrix-mageos"')" >> $GITHUB_OUTPUT
+
+      - name: Comment if nothing matched
+        if: steps.filter.outputs.matrix-magento == '{"include":[]}' && steps.filter.outputs.matrix-mageos == '{"include":[]}'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TOKENS: ${{ steps.tokens.outputs.tokens }}
+        run: |
+          gh pr comment "${{ github.event.issue.number }}" --body "⚠️ \`/test ${TOKENS}\` didn't match any images in manifest.json. Check the syntax in the pinned help comment."
+
+  validate:
+    name: Build + smoke test matched images
+    needs: parse
+    if: needs.parse.result == 'success' && (needs.parse.outputs.matrix-magento != '{"include":[]}' || needs.parse.outputs.matrix-mageos != '{"include":[]}')
+    uses: ./.github/workflows/_validate-docker-image.yml
+    with:
+      matrix-base: ${{ needs.parse.outputs.matrix-base }}
+      matrix-magento: ${{ needs.parse.outputs.matrix-magento }}
+      matrix-mageos: ${{ needs.parse.outputs.matrix-mageos }}
+
+  report:
+    name: Report result
+    needs: [parse, validate]
+    if: always() && needs.parse.result == 'success' && (needs.parse.outputs.matrix-magento != '{"include":[]}' || needs.parse.outputs.matrix-mageos != '{"include":[]}')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Comment result
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VALIDATE_RESULT: ${{ needs.validate.result }}
+          TOKENS: ${{ needs.parse.outputs.tokens }}
+          MATRIX_MAGENTO: ${{ needs.parse.outputs.matrix-magento }}
+          MATRIX_MAGEOS: ${{ needs.parse.outputs.matrix-mageos }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ "$VALIDATE_RESULT" = "success" ]; then
+            STATUS="✅ All matched images built and passed the smoke test."
+          else
+            STATUS="❌ One or more matched images failed to build or run. See the run for details."
+          fi
+
+          BODY="${STATUS}
+
+          Command: \`/test ${TOKENS}\`
+          Matched Magento: \`${MATRIX_MAGENTO}\`
+          Matched Mage-OS: \`${MATRIX_MAGEOS}\`
+
+          [View run](${RUN_URL})"
+
+          gh pr comment "${{ github.event.issue.number }}" --body "$BODY"
