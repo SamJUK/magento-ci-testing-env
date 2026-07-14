@@ -1,0 +1,43 @@
+name: Master Validate
+
+# Push to master only. Full matrix build + smoke test as a safety net before
+# a release is cut - nothing is published. Secret scanning is already
+# covered for this trigger by secret-scan-pr.yml, so it isn't repeated here.
+
+on:
+  push:
+    branches:
+      - master
+
+env:
+  DOCKER_BUILDKIT: 1
+  BUILDKIT_PROGRESS: plain
+
+jobs:
+  prepare-matrix:
+    name: Prepare Build Matrix
+    runs-on: ubuntu-latest
+    outputs:
+      matrix-base: ${{ steps.set-matrix.outputs.matrix-base }}
+      matrix-magento: ${{ steps.set-matrix.outputs.matrix-magento }}
+      matrix-mageos: ${{ steps.set-matrix.outputs.matrix-mageos }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Generate build matrices
+        id: set-matrix
+        run: |
+          RESULT=$(sh ./scripts/filter-matrix.sh)
+          echo "matrix-base=$(echo "$RESULT" | jq -c '."matrix-base"')" >> $GITHUB_OUTPUT
+          echo "matrix-magento=$(echo "$RESULT" | jq -c '."matrix-magento"')" >> $GITHUB_OUTPUT
+          echo "matrix-mageos=$(echo "$RESULT" | jq -c '."matrix-mageos"')" >> $GITHUB_OUTPUT
+
+  validate:
+    name: Validate Images (build + smoke test, no publish)
+    needs: prepare-matrix
+    uses: ./.github/workflows/_validate-image.yml
+    with:
+      matrix-base: ${{ needs.prepare-matrix.outputs.matrix-base }}
+      matrix-magento: ${{ needs.prepare-matrix.outputs.matrix-magento }}
+      matrix-mageos: ${{ needs.prepare-matrix.outputs.matrix-mageos }}

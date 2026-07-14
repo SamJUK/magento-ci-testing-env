@@ -75,7 +75,7 @@ jobs:
     name: Build + smoke test matched images
     needs: parse
     if: needs.parse.result == 'success' && (needs.parse.outputs.matrix-magento != '{"include":[]}' || needs.parse.outputs.matrix-mageos != '{"include":[]}')
-    uses: ./.github/workflows/_validate-docker-image.yml
+    uses: ./.github/workflows/_validate-image.yml
     with:
       matrix-base: ${{ needs.parse.outputs.matrix-base }}
       matrix-magento: ${{ needs.parse.outputs.matrix-magento }}
