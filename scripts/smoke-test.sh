@@ -22,7 +22,10 @@ case "$BUILD_TYPE" in
     CMD="php -v"
     ;;
   magento)
-    CMD="php bin/magento --version"
+    # Just check php runs and the app was actually installed - don't invoke
+    # bin/magento itself, it bootstraps the DI container and tries to reach
+    # redis/elasticsearch per env.php, which aren't present here.
+    CMD="php -v && [ -f bin/magento ] && [ -f composer.json ] && [ -f vendor/autoload.php ]"
     ;;
   *)
     echo -e "${CLR_RED}[✗] Unknown build type: $BUILD_TYPE (expected 'base' or 'magento')${CLR_NC}"
