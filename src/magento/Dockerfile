@@ -11,9 +11,10 @@ ENV MAGE_MODE=production
 RUN composer config --global audit.block-insecure false || true
 
 # Download Application and Setup
-COPY patches.json /tmp/patches.json
-COPY patches/ /tmp/patches/
-COPY ./scripts/ /tmp/scripts/
+USER www-data
+COPY --chown=www-data:www-data ./patches.json /tmp/
+COPY --chown=www-data:www-data ./patches /tmp/patches
+COPY --chown=www-data:www-data ./scripts /tmp/scripts
 RUN --mount=type=cache,target=/root/.composer/cache \
     --mount=type=cache,target=/tmp/cache \
     set -e; \
@@ -58,10 +59,7 @@ RUN --mount=type=cache,target=/root/.composer/cache \
     && rm -rf var/view_preprocessed/* var/cache/* var/page_cache/* var/generation/* \
     && rm -rf ./scripts/ \
     # Set Permissions
-    && chown -R www-data:www-data /var/www/html \
-    && find /var/www/html -type d -exec chmod 755 {} + \
-    && find /var/www/html -type f -exec chmod 644 {} + \
-    && chmod 755 /var/www/html/bin/magento \
+    && chmod +x /var/www/html/bin/magento \
     && chmod +x /var/www/html/vendor/bin/*
 
 # Add our env.php

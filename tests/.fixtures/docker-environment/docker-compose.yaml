@@ -1,0 +1,60 @@
+# This docker compose is only aimed to be used to validate the built images can serve a base Luma installation
+services:
+  ngx:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: Dockerfile.nginx
+      args:
+        IMAGE_TAG: "${IMAGE_TAG}"
+    ports:
+      - "8080:80"
+    volumes:
+      - m2_pub:/var/www/html/pub:ro
+    depends_on:
+      - app
+  app:
+    image: "${IMAGE_TAG}"
+    environment:
+      MAGENTO_MEMORY_LIMIT_DAEMON: 1
+      TESTS_MEM_USAGE: 0
+    volumes:
+      - m2_pub:/var/www/html/pub:cached
+      - ../example-module:/var/www/html/extensions/acme-example-module:ro
+    depends_on:
+      - db
+      - redis
+  db:
+    image: "mysql:${VERS_MYSQL}"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: magento
+      MYSQL_USER: magento
+      MYSQL_PASSWORD: magento
+    command: ["--log_bin_trust_function_creators=1"]
+    ports:
+      - "3306:3306"
+  redis:
+    image: "redis:${VERS_REDIS}"
+    ports:
+      - "6379:6379"
+  elasticsearch:
+    image: "docker.elastic.co/elasticsearch/elasticsearch:${VERS_SEARCH}"
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - xpack.monitoring.enabled=false
+      - xpack.ml.enabled=false
+      - xpack.graph.enabled=false
+      - xpack.watcher.enabled=false
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    mem_limit: 1g
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+
+volumes:
+  m2_pub:
