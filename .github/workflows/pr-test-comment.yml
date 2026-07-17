@@ -58,7 +58,7 @@ jobs:
         env:
           TOKENS: ${{ steps.tokens.outputs.tokens }}
         run: |
-          RESULT=$(sh ./scripts/filter-matrix.sh $TOKENS)
+          RESULT=$(./scripts/filter-matrix.sh $TOKENS)
           echo "matrix-base=$(echo "$RESULT" | jq -c '."matrix-base"')" >> $GITHUB_OUTPUT
           echo "matrix-magento=$(echo "$RESULT" | jq -c '."matrix-magento"')" >> $GITHUB_OUTPUT
           echo "matrix-mageos=$(echo "$RESULT" | jq -c '."matrix-mageos"')" >> $GITHUB_OUTPUT

@@ -71,7 +71,7 @@ jobs:
       - name: Generate build matrices
         id: set-matrix
         run: |
-          RESULT=$(sh ./scripts/filter-matrix.sh)
+          RESULT=$(./scripts/filter-matrix.sh)
           echo "matrix-base=$(echo "$RESULT" | jq -c '."matrix-base"')" >> $GITHUB_OUTPUT
           echo "matrix-magento=$(echo "$RESULT" | jq -c '."matrix-magento"')" >> $GITHUB_OUTPUT
           echo "matrix-mageos=$(echo "$RESULT" | jq -c '."matrix-mageos"')" >> $GITHUB_OUTPUT
