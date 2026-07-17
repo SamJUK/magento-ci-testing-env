@@ -22,7 +22,8 @@ RUN --mount=type=cache,target=/root/.composer/cache \
         exit 1; \
     fi; \
     [ "${APP_DISTRO}" = "magento" ] && REPO="https://mage-os.hypernode.com/mirror/" || REPO="https://repo.mage-os.org/"; \
-    composer create-project --no-install --prefer-dist --repository-url=${REPO} ${APP_DISTRO}/project-community-edition:${APP_VERSION} . \
+    retry() { for i in 1 2 3; do "$@" && return 0; echo "Attempt $i failed, retrying in 5s..." >&2; sleep 5; done; return 1; }; \
+    retry composer create-project --no-install --prefer-dist --repository-url=${REPO} ${APP_DISTRO}/project-community-edition:${APP_VERSION} . \
     # Move our assets in place
     && mv /tmp/patches ./patches \
     && mv /tmp/scripts ./scripts \
@@ -48,7 +49,7 @@ RUN --mount=type=cache,target=/root/.composer/cache \
     # Fix broken composer constraints
     && sh  ./scripts/fix-invalid-package-versions.sh \
     # Final Installation
-    && composer install \
+    && retry composer install \
     && composer clear-cache \
     # Build and generate Magento configs
     && php bin/magento module:enable --all \
