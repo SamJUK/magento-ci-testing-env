@@ -8,6 +8,10 @@ permissions:
   contents: read
   pull-requests: write
   issues: write
+  statuses: write
+
+env:
+  STATUS_CONTEXT: on-demand images (/test)
 
 jobs:
   parse:
@@ -38,6 +42,18 @@ jobs:
           echo "head-sha=$HEAD_SHA" >> $GITHUB_OUTPUT
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # issue_comment runs don't attach to the PR head, so mirror the result
+      # onto the head SHA as a commit status to surface it in the PR checks.
+      - name: Set pending status
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api "repos/${{ github.repository }}/statuses/${{ steps.pr.outputs.head-sha }}" \
+            -f state=pending \
+            -f context="$STATUS_CONTEXT" \
+            -f description="Building matched images" \
+            -f target_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" --silent
 
       - name: Checkout PR head
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
@@ -70,6 +86,11 @@ jobs:
           TOKENS: ${{ steps.tokens.outputs.tokens }}
         run: |
           gh pr comment "${{ github.event.issue.number }}" --body "⚠️ \`/test ${TOKENS}\` didn't match any images in manifest.json. Check the syntax in the pinned help comment."
+          gh api "repos/${{ github.repository }}/statuses/${{ steps.pr.outputs.head-sha }}" \
+            -f state=failure \
+            -f context="$STATUS_CONTEXT" \
+            -f description="No images matched /test ${TOKENS}" \
+            -f target_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" --silent
 
   validate:
     name: Build + smoke test matched images
@@ -90,6 +111,7 @@ jobs:
       - name: Comment result
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
           VALIDATE_RESULT: ${{ needs.validate.result }}
           TOKENS: ${{ needs.parse.outputs.tokens }}
           MATRIX_MAGENTO: ${{ needs.parse.outputs.matrix-magento }}
@@ -111,3 +133,24 @@ jobs:
           [View run](${RUN_URL})"
 
           gh pr comment "${{ github.event.issue.number }}" --body "$BODY"
+
+      - name: Set final status
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VALIDATE_RESULT: ${{ needs.validate.result }}
+          TOKENS: ${{ needs.parse.outputs.tokens }}
+        run: |
+          if [ "$VALIDATE_RESULT" = "success" ]; then
+            STATE=success
+            DESCRIPTION="All matched images built and passed the smoke test"
+          else
+            STATE=failure
+            DESCRIPTION="One or more matched images failed"
+          fi
+
+          gh api "repos/${{ github.repository }}/statuses/${{ needs.parse.outputs.head-sha }}" \
+            -f state="$STATE" \
+            -f context="$STATUS_CONTEXT" \
+            -f description="$DESCRIPTION (/test ${TOKENS})" \
+            -f target_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}" --silent
