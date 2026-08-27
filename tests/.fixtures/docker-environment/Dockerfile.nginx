@@ -1,0 +1,6 @@
+ARG IMAGE_TAG
+FROM ${IMAGE_TAG} AS app
+
+FROM nginx:alpine
+COPY --from=app /var/www/html /var/www/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf

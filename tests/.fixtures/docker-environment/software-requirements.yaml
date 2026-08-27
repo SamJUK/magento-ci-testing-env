@@ -1,0 +1,41 @@
+---
+# Magento CE
+"magento-ci-testing-env:2.4.8": &magento-248
+  mysql: "8.0"
+  redis: "6.0"
+  elasticsearch: "7.16.2"
+
+"magento-ci-testing-env:2.4.7": &magento-247
+  mysql: "8.0"
+  redis: "6.0"
+  elasticsearch: "7.16.2"
+
+"magento-ci-testing-env:2.4.6": &magento-246
+  mysql: "8.0"
+  redis: "6.0"
+  elasticsearch: "7.16.2"
+
+"magento-ci-testing-env:2.4.5": &magento-245
+  mysql: "8.0"
+  redis: "6.0"
+  elasticsearch: "7.16.2"
+
+"magento-ci-testing-env:2.4.4": &magento-244
+  mysql: "8.0"
+  redis: "6.0"
+  elasticsearch: "7.16.2"
+
+"magento-ci-testing-env:2.4.3": &magento-243
+  mysql: "8.0"
+  redis: "6.0"
+  elasticsearch: "7.16.2"
+
+"magento-ci-testing-env:2.4.2": &magento-242
+  mysql: "8.0"
+  redis: "6.0"
+  elasticsearch: "7.16.2"
+
+
+# MageOS 
+"mageos-ci-testing-env:2.0.0":
+  <<: *magento-248

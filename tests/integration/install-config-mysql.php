@@ -1,0 +1,28 @@
+<?php
+return [
+    'db-host' => 'db',
+    'db-user' => 'magento',
+    'db-password' => 'magento',
+    'db-name' => 'magento',
+    'db-prefix' => '',
+    'db-init-statements' => 'SET SESSION sql_mode="TRADITIONAL"',
+    'db-ssl' => false,
+    'backend-frontname' => 'admin',
+    'admin-user' => \Magento\TestFramework\Bootstrap::ADMIN_NAME,
+    'admin-password' => \Magento\TestFramework\Bootstrap::ADMIN_PASSWORD,
+    'admin-email' => \Magento\TestFramework\Bootstrap::ADMIN_EMAIL,
+    'admin-firstname' => \Magento\TestFramework\Bootstrap::ADMIN_FIRSTNAME,
+    'admin-lastname' => \Magento\TestFramework\Bootstrap::ADMIN_LASTNAME,
+    'session-save' => 'redis',
+    'session-save-redis-host' => 'redis',
+    'session-save-redis-port' => 6379,
+    'session-save-redis-db' => 2,
+    'cache-backend' => 'redis',
+    'cache-backend-redis-server' => 'redis',
+    'cache-backend-redis-db' => 0,
+    'elasticsearch-host' => 'elasticsearch',
+    'elasticsearch-port' => 9200,
+    'elasticsearch-index-prefix' => 'magento2',
+    'elasticsearch-enable-auth' => 0,
+    'search-engine' => 'elasticsearch8'
+];
