@@ -56,7 +56,9 @@ RUN --mount=type=cache,target=/tmp/composer-download \
     composer --version
 
 RUN set -e; \
-    if [[ "$PHP_VERSION" = 7.4* ]]; then \
+    if [[ "$PHP_VERSION" = 8.1* ]]; then \
+        url="https://files.magerun.net/n98-magerun2-9.5.1.phar"; \
+    elif [[ "$PHP_VERSION" = 7.4* ]]; then \
         url="https://files.magerun.net/n98-magerun2-7.5.0.phar"; \
     elif [[ "$PHP_VERSION" = 7.3* ]]; then \
         url="https://files.magerun.net/n98-magerun2-6.1.1.phar"; \
