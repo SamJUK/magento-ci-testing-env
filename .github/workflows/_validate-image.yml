@@ -35,6 +35,7 @@ jobs:
   validate-base:
     name: Validate Base Image (PHP ${{ matrix.php }})
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(inputs.matrix-base) }}
@@ -73,6 +74,7 @@ jobs:
     needs: validate-base
     if: inputs.matrix-magento != '{"include":[]}'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(inputs.matrix-magento) }}
@@ -111,6 +113,7 @@ jobs:
     needs: validate-base
     if: inputs.matrix-mageos != '{"include":[]}'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix: ${{ fromJson(inputs.matrix-mageos) }}
