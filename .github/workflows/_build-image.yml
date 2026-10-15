@@ -111,6 +111,9 @@ jobs:
             type=raw,value=${{ inputs.tag-suffix }}-${{ steps.params.outputs.git-tag }}
           flavor: |
             latest=false
+          # Magento and Mage-OS images ship the platform itself, which is OSL-3.0 and
+          # AFL-3.0. Only the Dockerfiles here are MIT.
+          labels: ${{ inputs.build-type == 'magento' && 'org.opencontainers.image.licenses=MIT AND OSL-3.0 AND AFL-3.0' || '' }}
 
       - name: Build and push image
         id: build
