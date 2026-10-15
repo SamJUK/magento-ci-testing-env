@@ -26,6 +26,7 @@ jobs:
   secret-scan:
     name: Secret Scanning with TruffleHog
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
       security-events: write
@@ -53,6 +54,7 @@ jobs:
   prepare-matrix:
     name: Prepare Build Matrix
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: secret-scan
     outputs:
       matrix-base: ${{ steps.set-matrix.outputs.matrix-base }}
@@ -170,6 +172,7 @@ jobs:
   create-release:
     name: Create Draft Release
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: [prepare-matrix, build-base-images, build-magento-images, build-mageos-images]
     permissions:
       contents: write
@@ -372,6 +375,7 @@ jobs:
   summary:
     name: Build Summary
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     needs: [secret-scan, prepare-matrix, build-base-images, build-magento-images, build-mageos-images, create-release]
     if: always()
     steps:
