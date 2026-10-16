@@ -32,32 +32,29 @@ RUN --mount=type=cache,target=/root/.composer/cache \
     && composer config --no-plugins allow-plugins.phpstan/extension-installer true \
     && composer config --no-plugins allow-plugins.dealerdirect/phpcodesniffer-composer-installer true \
     && composer config --no-plugins allow-plugins.magento/* true \
-    && composer config --no-plugins allow-plugins.vaimo/composer-patches true \
     && composer config --no-plugins allow-plugins.laminas/laminas-dependency-plugin true \
     # Install Extra Composer Tooling
     && composer require --no-update --dev \
-        vaimo/composer-patches:* \
         phpstan/phpstan:* \
         bitexpert/phpstan-magento:* \
         phpstan/extension-installer:* \
     # Configure local Extensions directory
     && mkdir -p extensions \
     && composer config repositories.local path ./extensions/* \
-    # Apply Patches
-    && jq '.extra.patches = ((.extra.patches // {}) * input)' composer.json patches.json > composer.tmp \
-    && mv composer.tmp composer.json \
     # Fix broken composer constraints
     && sh  ./scripts/fix-invalid-package-versions.sh \
     # Final Installation
     && retry composer install \
     && composer clear-cache \
+    # Apply Patches
+    && php ./scripts/apply-patches.php \
     # Build and generate Magento configs
     && php bin/magento module:enable --all \
     && php ./scripts/merge-default-scope-config.php \
     && php bin/magento setup:di:compile \
     && php bin/magento setup:static-content:deploy -f -s compact --symlink-locale --jobs=$(nproc) \
     && rm -rf var/view_preprocessed/* var/cache/* var/page_cache/* var/generation/* \
-    && rm -rf ./scripts/ \
+    && rm -rf ./scripts/ ./patches/ ./patches.json \
     # Set Permissions
     && chown -R www-data:www-data /var/www/html \
     && find /var/www/html -type d -exec chmod 755 {} + \
