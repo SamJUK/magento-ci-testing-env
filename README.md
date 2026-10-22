@@ -7,6 +7,10 @@ A collection of docker images, aimed at facilitating Unit / Integration / E2E te
 
 The main aim of these set of images, is to keep the Image size as small as possible. This allows for faster test executions, quicker builds and reduced pipelines costs. Especially important if your building and testing your modules across multiple Magento / PHP versions.
 
+> [!WARNING]
+> The PHP 7.4 and 8.1 images are vulnerable to PHP2SHELL ([CVE-2026-109618](https://github.com/php/php-src/security/advisories/GHSA-w8hw-w9fx-j79w), [CVE-2026-109619](https://github.com/php/php-src/security/advisories/GHSA-6wmf-4rv5-p3rp)). Both PHP versions are end of life with no patched official image, as is every Magento version that runs on them.
+> These are CI images, not production builds. Do not run them anywhere publicly accessible.
+
 ## 📦 Available Images
 
 Image Name | Size (Compressed) | Docker Hub | GitHub Container Registry
@@ -132,6 +136,8 @@ Images are automatically built and published when a new tag is pushed:
 git tag v1.0.0
 git push origin v1.0.0
 ```
+
+Each PHP minor's base image is pinned to a patch release in `src/base/php/<minor>/Dockerfile`. Dependabot opens a PR when a new patch release ships; merge it and tag a release to publish.
 
 Every push to `master` also triggers a full build + smoke test of the entire matrix (no images are published) - this catches a broken `manifest.json` entry or Dockerfile change before it reaches a release.
 

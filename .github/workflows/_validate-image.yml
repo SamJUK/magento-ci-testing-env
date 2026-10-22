@@ -52,6 +52,7 @@ jobs:
           docker buildx build ./src/base -f ./src/base/Dockerfile \
             --platform linux/amd64 \
             --build-arg PHP_VERSION=${{ matrix.php }} \
+            --build-arg PHP_IMAGE="$(sed -n 's/^FROM //p' ./src/base/php/${{ matrix.php }}/Dockerfile)" \
             --tag "$TAG" \
             --load
 
