@@ -39,6 +39,21 @@ docker pull samjuk/magento-ci-testing-env:2.4.8-php8.3-v1.0.0
 docker pull ghcr.io/samjuk/magento-base-ci-testing-env:8.3-v1.0.0
 ```
 
+### 🔎 opensearch-slim
+
+`ghcr.io/samjuk/opensearch-slim:3.9.0` (amd64 and arm64) is OpenSearch 3.9.0 with all 26 bundled plugins removed.
+Magento's catalogue search needs only the core modules (`analysis-common`, `lang-painless`). It also runs on a
+read-only root filesystem with a `noexec` tmpfs on `/tmp`. Built and tested by `.github/workflows/opensearch.yml`
+from `src/opensearch`; pin it by digest. It is not part of the release workflow, so the Trivy and Cosign notes below
+do not cover it.
+
+Heap and JVM flags stay in `OPENSEARCH_JAVA_OPTS`. For a small demo catalogue, this held idle memory at about
+320 MiB, against about 1 GiB for the stock image with a 512m heap:
+
+```
+-Xms64m -Xmx256m -XX:-AlwaysPreTouch -XX:-UseG1GC -XX:+UseSerialGC -XX:TieredStopAtLevel=1
+```
+
 ## 🔒 Security & Attestations
 
 All images are:
