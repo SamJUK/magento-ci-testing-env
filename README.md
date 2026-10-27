@@ -179,7 +179,9 @@ Magento/Mage-OS builds also run the `tests/unit` suite automatically via `build.
 
 ## 🩹 Patches
 Some older core Magento versions have known installation issues that we need to patch during the image build process. 
-We aim to handle all these via composer patches at build time, to ensure we do not skip any images, and keep the patches maintainable going forward.
+Patches are declared in `src/magento/patches.json` and applied once at build time with plain `patch`, by `src/magento/scripts/apply-patches.php`. Each patch is applied only when every package in its `depends` matches the installed version.
+
+The images ship no Composer patch plugin, so a module under test can bring its own (`cweagans/composer-patches`, `vaimo/composer-patches`) without a conflict.
 
 If we have patches / operations that cannot be handled via composer, we also have functionality within the `scripts` folder to run custom PHP / shell scripts during the image build process.
 
