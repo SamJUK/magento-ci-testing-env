@@ -1,14 +1,12 @@
 version: 2
 
 updates:
-  # Docker base image updates for base/Dockerfile
+  # PHP patch releases for the pinned base images, one directory per PHP minor
   - package-ecosystem: "docker"
     directories:
-      - "/src/base"
-      - "/src/magento"
+      - "/src/base/php/*"
     schedule:
-      interval: "weekly"
-      day: "monday"
+      interval: "daily"
       time: "09:00"
     open-pull-requests-limit: 5
     labels:
@@ -19,18 +17,15 @@ updates:
       include: "scope"
     reviewers:
       - "SamJUK"
+    ignore:
+      - dependency-name: "php"
+        update-types:
+          - "version-update:semver-major"
+          - "version-update:semver-minor"
     groups:
-      docker-dependencies-major:
+      php:
         patterns:
-          - "*"
-        update-types:
-          - "major"
-      docker-dependencies-minor:
-        patterns:
-          - "*"
-        update-types:
-          - "minor"
-          - "patch"
+          - "php"
 
   # GitHub Actions workflow updates
   - package-ecosystem: "github-actions"

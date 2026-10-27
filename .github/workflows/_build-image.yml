@@ -70,6 +70,7 @@ jobs:
           if [ "${{ inputs.build-type }}" = "base" ]; then
             echo "context=./src/base" >> $GITHUB_OUTPUT
             echo "dockerfile=./src/base/Dockerfile" >> $GITHUB_OUTPUT
+            echo "build-args=PHP_IMAGE=$(sed -n 's/^FROM //p' ./src/base/php/${{ inputs.tag-suffix }}/Dockerfile)" >> $GITHUB_OUTPUT
             echo "sbom-format=spdx-json" >> $GITHUB_OUTPUT
             echo "sbom-ext=spdx.json" >> $GITHUB_OUTPUT
           else
@@ -125,7 +126,9 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          build-args: ${{ inputs.build-args }}
+          build-args: |
+            ${{ inputs.build-args }}
+            ${{ steps.params.outputs.build-args }}
           provenance: mode=max
           sbom: true
 

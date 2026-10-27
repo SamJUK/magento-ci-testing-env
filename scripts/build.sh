@@ -54,7 +54,8 @@ build_base () {
     set +e 
     DOCKER_OUTPUT=$(docker build -f src/base/Dockerfile src/base -t $TAG \
         --platform linux/amd64 \
-        --build-arg PHP_VERSION=$PHP_VERSION 2>&1)
+        --build-arg PHP_VERSION=$PHP_VERSION \
+        --build-arg PHP_IMAGE="$(sed -n 's/^FROM //p' src/base/php/$PHP_VERSION/Dockerfile)" 2>&1)
         
     if [ $? -ne 0 ]; then
         echo -e "${CLR_RED}❌ Failed to build image $TAG${CLR_NC}"

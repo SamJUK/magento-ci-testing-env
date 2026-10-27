@@ -1,5 +1,7 @@
 ARG PHP_VERSION=8.3
-FROM php:${PHP_VERSION}-fpm-alpine
+# Builds pass the pinned image from php/<minor>/Dockerfile, which Dependabot bumps
+ARG PHP_IMAGE=php:${PHP_VERSION}-fpm-alpine
+FROM ${PHP_IMAGE}
 
 WORKDIR /var/www/html
 
