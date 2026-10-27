@@ -17,6 +17,7 @@ jobs:
   prepare-matrix:
     name: Prepare Build Matrix
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     outputs:
       matrix-base: ${{ steps.set-matrix.outputs.matrix-base }}
       matrix-magento: ${{ steps.set-matrix.outputs.matrix-magento }}

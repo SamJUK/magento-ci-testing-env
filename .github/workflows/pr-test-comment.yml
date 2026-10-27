@@ -17,6 +17,7 @@ jobs:
   parse:
     name: Parse /test command
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     if: >
       github.event.issue.pull_request != null &&
       github.event.comment.author_association == 'OWNER' &&
@@ -107,6 +108,7 @@ jobs:
     needs: [parse, validate]
     if: always() && needs.parse.result == 'success' && (needs.parse.outputs.matrix-magento != '{"include":[]}' || needs.parse.outputs.matrix-mageos != '{"include":[]}')
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Comment result
         env:
